@@ -37,6 +37,7 @@ import rx.android.schedulers.AndroidSchedulers;
 public class EncounterService extends IntentService {
 
     private final RestApi apiService = RestServiceBuilder.createService(RestApi.class);
+    private PatientDAO patientDAO = new PatientDAO();
 
     public EncounterService() {
         super("Save Encounter");
@@ -71,31 +72,38 @@ public class EncounterService extends IntentService {
         addEncounter(encountercreate, null);
     }
 
-        private void startNewVisitForEncounter(final Encountercreate encountercreate, @Nullable final DefaultResponseCallbackListener callbackListener) {
-        new VisitApi().startVisit(new PatientDAO().findPatientByUUID(encountercreate.getPatient()),
-                new StartVisitResponseListenerCallback() {
-                    @Override
-                    public void onStartVisitResponse(long id) {
-                        new VisitDAO().getVisitByID(id)
-                                .observeOn(AndroidSchedulers.mainThread())
-                                .subscribe(visit -> {
-                                    encountercreate.setVisit(visit.getUuid());
-                                    if (callbackListener != null) {
-                                        syncEncounter(encountercreate, callbackListener);
-                                    }
-                                    else {
-                                        syncEncounter(encountercreate);
-                                    }
-                                });
-                    }
-                    @Override
-                    public void onResponse() {
-                        // This method is intentionally empty
-                    }
-                    @Override
-                    public void onErrorResponse(String errorMessage) {
-                        ToastUtil.error(errorMessage);
-                    }
+    private void startNewVisitForEncounter(final Encountercreate encountercreate, @Nullable final DefaultResponseCallbackListener callbackListener) {
+
+        patientDAO.findPatientByUUID(encountercreate.getPatient())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(patient -> {
+
+                    new VisitApi().startVisit(patient,
+                            new StartVisitResponseListenerCallback() {
+                                @Override
+                                public void onStartVisitResponse(long id) {
+                                    new VisitDAO().getVisitByID(id)
+                                            .observeOn(AndroidSchedulers.mainThread())
+                                            .subscribe(visit -> {
+                                                encountercreate.setVisit(visit.getUuid());
+                                                if (callbackListener != null) {
+                                                    syncEncounter(encountercreate, callbackListener);
+                                                } else {
+                                                    syncEncounter(encountercreate);
+                                                }
+                                            });
+                                }
+
+                                @Override
+                                public void onResponse() {
+                                    // This method is intentionally empty
+                                }
+
+                                @Override
+                                public void onErrorResponse(String errorMessage) {
+                                    ToastUtil.error(errorMessage);
+                                }
+                            });
                 });
     }
 
@@ -175,26 +183,28 @@ public class EncounterService extends IntentService {
                     .from(Encountercreate.class)
                     .execute();
 
-            for(final Encountercreate encountercreate:encountercreatelist)
-            {
-                if(!encountercreate.getSynced() &&
-                        new PatientDAO().findPatientByID(Long.toString(encountercreate.getPatientId())).isSynced())
-                {
-                    new VisitDAO().getActiveVisitByPatientId(encountercreate.getPatientId())
-                            .observeOn(AndroidSchedulers.mainThread())
-                            .subscribe(visit -> {
-                                if (visit != null) {
-                                    encountercreate.setVisit(visit.getUuid());
-                                    syncEncounter(encountercreate);
+            for(final Encountercreate encountercreate:encountercreatelist) {
 
-                                } else {
-                                    startNewVisitForEncounter(encountercreate);
+                if (!encountercreate.getSynced()) {
+                    patientDAO.findPatientByID(Long.toString(encountercreate.getPatientId()))
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .subscribe(patient -> {
+                                if (patient.isSynced()) {
+                                    new VisitDAO().getActiveVisitByPatientId(encountercreate.getPatientId())
+                                            .observeOn(AndroidSchedulers.mainThread())
+                                            .subscribe(visit -> {
+                                                if (visit != null) {
+                                                    encountercreate.setVisit(visit.getUuid());
+                                                    syncEncounter(encountercreate);
+
+                                                } else {
+                                                    startNewVisitForEncounter(encountercreate);
+                                                }
+                                            });
                                 }
                             });
                 }
             }
-
-
         } else {
             ToastUtil.error("No internet connection. Form data is saved locally " +
                     "and will sync when internet connection is restored. ");

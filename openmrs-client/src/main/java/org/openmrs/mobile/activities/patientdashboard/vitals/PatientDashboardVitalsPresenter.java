@@ -23,22 +23,38 @@ import org.openmrs.mobile.listeners.retrofit.DefaultResponseCallbackListener;
 import org.openmrs.mobile.models.Encounter;
 import org.openmrs.mobile.utilities.NetworkUtils;
 
+import rx.android.schedulers.AndroidSchedulers;
+
 public class PatientDashboardVitalsPresenter extends PatientDashboardMainPresenterImpl implements PatientDashboardContract.PatientVitalsPresenter {
 
     private EncounterDAO encounterDAO;
+    private PatientDAO patientDao;
+    private String patientId;
     private PatientDashboardContract.ViewPatientVitals mPatientVitalsView;
 
     public PatientDashboardVitalsPresenter(String id, PatientDashboardContract.ViewPatientVitals mPatientVitalsView) {
-        this.mPatient = new PatientDAO().findPatientByID(id);
+        this.patientId = id;
         this.mPatientVitalsView = mPatientVitalsView;
         this.mPatientVitalsView.setPresenter(this);
         this.encounterDAO = new EncounterDAO();
+        this.patientDao = new PatientDAO();
     }
 
     @Override
     public void start() {
-        loadVitalsFromDB();
-        loadVitalsFromServer();
+        if (this.mPatient == null) {
+            patientDao.findPatientByID(patientId)
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(patient -> {
+                        this.mPatient = patient;
+                        loadVitalsFromDB();
+                        loadVitalsFromServer();
+                    });
+        }
+        else {
+            loadVitalsFromDB();
+            loadVitalsFromServer();
+        }
     }
 
     private void loadVitalsFromServer() {

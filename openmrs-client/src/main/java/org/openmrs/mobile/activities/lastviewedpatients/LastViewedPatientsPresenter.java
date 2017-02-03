@@ -146,7 +146,7 @@ public class LastViewedPatientsPresenter implements LastViewedPatientsContract.P
     private List<Patient> filterNotDownloadedPatients(List<Patient> patients) {
         List<Patient> newPatientList = new LinkedList<>();
         for (Patient patient: patients){
-            if(!patientDAO.isUserAlreadySaved(patient.getUuid())){
+            if(!patientDAO.isUserAlreadySaved(patient.getUuid()).toBlocking().first()){
                 newPatientList.add(patient);
             }
         }

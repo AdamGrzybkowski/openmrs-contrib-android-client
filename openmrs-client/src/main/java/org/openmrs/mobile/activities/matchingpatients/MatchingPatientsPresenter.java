@@ -16,17 +16,21 @@ import java.util.Queue;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import rx.android.schedulers.AndroidSchedulers;
 
 public class MatchingPatientsPresenter implements MachingPatientsContract.Presenter{
 
     private MachingPatientsContract.View view;
     private Queue<PatientAndMatchingPatients> matchingPatientsList;
     private Patient selectedPatient;
+    private PatientDAO patientDAO;
+
 
     public MatchingPatientsPresenter(MachingPatientsContract.View view, Queue<PatientAndMatchingPatients> matchingPatientsList) {
         this.view = view;
         this.matchingPatientsList = matchingPatientsList;
         this.view.setPresenter(this);
+        patientDAO = new PatientDAO();
     }
 
     @Override
@@ -70,16 +74,20 @@ public class MatchingPatientsPresenter implements MachingPatientsContract.Presen
             @Override
             public void onResponse(Call<Patient> call, Response<Patient> response) {
                 if(response.isSuccessful()){
-                    PatientDAO patientDAO = new PatientDAO();
-                    if(patientDAO.isUserAlreadySaved(patient.getUuid())){
-                        Long id = patientDAO.findPatientByUUID(patient.getUuid()).getId();
-                        patientDAO.updatePatient(id, patient);
-                        patientDAO.deletePatient(patient.getId());
-                    } else {
-                        patientDAO.updatePatient(patient.getId(), patient);
-                    }
-                    ToastUtil.success("Patient " +patient.getPerson().getName().getNameString()
-                            +" merged successfully");
+                    patientDAO.isUserAlreadySaved(patient.getUuid())
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .subscribe(isSaved -> {
+                                if(isSaved){
+                                    Long id = patientDAO.findPatientByUUID(patient.getUuid()).toBlocking().first().getId();
+                                    patientDAO.updatePatient(id, patient).subscribe();
+                                    patientDAO.deletePatient(patient.getId());
+                                } else {
+                                    patientDAO.updatePatient(patient.getId(), patient).subscribe();
+                                }
+                                ToastUtil.success("Patient " +patient.getPerson().getName().getNameString()
+                                        +" merged successfully");
+                            });
+
                 } else {
                     ToastUtil.error(response.message());
                 }

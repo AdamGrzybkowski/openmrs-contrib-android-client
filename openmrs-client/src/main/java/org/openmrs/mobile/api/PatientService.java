@@ -30,7 +30,6 @@ import org.openmrs.mobile.utilities.ToastUtil;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.ListIterator;
 
 import retrofit2.Call;
 import retrofit2.Response;
@@ -39,6 +38,7 @@ public class PatientService extends IntentService {
 
     public static final String PATIENT_SERVICE_TAG = "PATIENT_SERVICE";
     private boolean calculatedLocally = false;
+    private PatientDAO patientDAO = new PatientDAO();
 
     public PatientService() {
         super("Register Patients");
@@ -48,19 +48,19 @@ public class PatientService extends IntentService {
     protected void onHandleIntent(Intent intent) {
         if(NetworkUtils.isOnline()) {
             PatientAndMatchesWrapper patientAndMatchesWrapper = new PatientAndMatchesWrapper();
-            List<Patient> patientList = new PatientDAO().getUnsyncedPatients();
-            final ListIterator<Patient> it = patientList.listIterator();
-            while (it.hasNext()) {
-                final Patient patient=it.next();
-                fetchSimilarPatients(patient, patientAndMatchesWrapper);
-            }
-            if (!patientAndMatchesWrapper.getMatchingPatients().isEmpty()) {
-                Intent intent1 = new Intent(getApplicationContext(), MatchingPatientsActivity.class);
-                intent1.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                intent1.putExtra(ApplicationConstants.BundleKeys.CALCULATED_LOCALLY, calculatedLocally);
-                intent1.putExtra(ApplicationConstants.BundleKeys.PATIENTS_AND_MATCHES, patientAndMatchesWrapper);
-                startActivity(intent1);
-            }
+            patientDAO.getUnsyncedPatients()
+                    .subscribe(patients -> {
+                        for (Patient patient : patients) {
+                            fetchSimilarPatients(patient, patientAndMatchesWrapper);
+                        }
+                        if (!patientAndMatchesWrapper.getMatchingPatients().isEmpty()) {
+                            Intent intent1 = new Intent(getApplicationContext(), MatchingPatientsActivity.class);
+                            intent1.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            intent1.putExtra(ApplicationConstants.BundleKeys.CALCULATED_LOCALLY, calculatedLocally);
+                            intent1.putExtra(ApplicationConstants.BundleKeys.PATIENTS_AND_MATCHES, patientAndMatchesWrapper);
+                            startActivity(intent1);
+                        }
+                    });
         } else {
             ToastUtil.error("No internet connection. Patient Registration data is saved locally " +
                     "and will sync when internet connection is restored. ");

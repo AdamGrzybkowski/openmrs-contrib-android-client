@@ -47,8 +47,8 @@ public class LastViewedPatientsPresenterTest extends ACUnitTestBase {
                 patientDAO);
         firstPatient = createPatient(1l);
         secondPatient = createPatient(2l);
-        when(patientDAO.isUserAlreadySaved(firstPatient.getUuid())).thenReturn(true);
-        when(patientDAO.isUserAlreadySaved(secondPatient.getUuid())).thenReturn(false);
+        when(patientDAO.isUserAlreadySaved(firstPatient.getUuid()).toBlocking().first()).thenReturn(true);
+        when(patientDAO.isUserAlreadySaved(secondPatient.getUuid()).toBlocking().first()).thenReturn(false);
     }
 
     private Call<Results<Patient>> mockSuccessCall(List<Patient> patientList) {

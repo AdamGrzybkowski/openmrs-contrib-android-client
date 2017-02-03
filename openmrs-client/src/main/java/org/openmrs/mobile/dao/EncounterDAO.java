@@ -105,7 +105,7 @@ public class EncounterDAO {
                     encounter.setEncounterType((EncounterType)new Select().from(EncounterType.class).where("display = ?", EncounterType.VITALS).executeSingle());
                     encounter.setObservations(new ObservationDAO().findObservationByEncounterID(id));
                     encounter.setForm(FormService.getFormByUuid(formUuid));
-                    encounter.setPatient(new PatientDAO().findPatientByUUID(patientUuid));
+                    encounter.setPatient(new PatientDAO().findPatientByUUID(patientUuid).toBlocking().first());
                 }
             } finally {
                 cursor.close();

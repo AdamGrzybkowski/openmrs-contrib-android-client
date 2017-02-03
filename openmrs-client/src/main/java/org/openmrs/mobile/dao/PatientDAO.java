@@ -35,14 +35,18 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+import rx.Observable;
+
+import static org.openmrs.mobile.databases.DBOpenHelper.createObservableIO;
+
 public class PatientDAO {
 
     public long savePatient(Patient patient) {
         return new PatientTable().insert(patient);
     }
 
-    public boolean updatePatient(long patientID, Patient patient) {
-        return new PatientTable().update(patientID, patient) > 0;
+    public Observable<Boolean> updatePatient(long patientID, Patient patient) {
+        return createObservableIO(() -> new PatientTable().update(patientID, patient) > 0);
     }
 
     public void deletePatient(long id) {
@@ -52,23 +56,25 @@ public class PatientDAO {
                 + " = " + id, null);
     }
 
-    public List<Patient> getAllPatients() {
-        List<Patient> patients = new ArrayList<Patient>();
-        DBOpenHelper openHelper = OpenMRSDBOpenHelper.getInstance().getDBOpenHelper();
-        Cursor cursor = openHelper.getReadableDatabase().query(PatientTable.TABLE_NAME,
-                null, null, null, null, null, null);
+    public Observable<List<Patient>> getAllPatients() {
+        return createObservableIO(() -> {
+            List<Patient> patients = new ArrayList<>();
+            DBOpenHelper openHelper = OpenMRSDBOpenHelper.getInstance().getDBOpenHelper();
+            Cursor cursor = openHelper.getReadableDatabase().query(PatientTable.TABLE_NAME,
+                    null, null, null, null, null, null);
 
-        if (null != cursor) {
-            try {
-                while (cursor.moveToNext()) {
-                    Patient patient = cursorToPatient(cursor);
-                    patients.add(patient);
+            if (null != cursor) {
+                try {
+                    while (cursor.moveToNext()) {
+                        Patient patient = cursorToPatient(cursor);
+                        patients.add(patient);
+                    }
+                } finally {
+                    cursor.close();
                 }
-            } finally {
-                cursor.close();
             }
-        }
-        return patients;
+            return patients;
+        });
     }
 
     private Patient cursorToPatient(Cursor cursor) {
@@ -102,88 +108,91 @@ public class PatientDAO {
         return patient;
     }
 
-    public boolean isUserAlreadySaved(String uuid) {
-        String where = String.format("%s = ?", PatientTable.Column.UUID);
-        String[] whereArgs = new String[]{uuid};
+    public Observable<Boolean> isUserAlreadySaved(String uuid) {
+        return createObservableIO(() -> {
+            String where = String.format("%s = ?", PatientTable.Column.UUID);
+            String[] whereArgs = new String[]{uuid};
 
-        DBOpenHelper helper = OpenMRSDBOpenHelper.getInstance().getDBOpenHelper();
-        final Cursor cursor = helper.getReadableDatabase().query(PatientTable.TABLE_NAME, null, where, whereArgs, null, null, null);
-        String patientUUID = "";
-        if (null != cursor) {
-            try {
-                if (cursor.moveToFirst()) {
-                    int uuidColumnIndex = cursor.getColumnIndex(PatientTable.Column.UUID);
-                    patientUUID = cursor.getString(uuidColumnIndex);
-                }
-            } finally {
-                cursor.close();
-            }
-        }
-        return uuid.equalsIgnoreCase(patientUUID);
-    }
-
-    public boolean userDoesNotExist(String uuid) {
-        return !isUserAlreadySaved(uuid);
-    }
-
-    public Patient findPatientByUUID(String uuid) {
-        Patient patient = new Patient();
-        String where = String.format("%s = ?", PatientTable.Column.UUID);
-        String[] whereArgs = new String[]{uuid};
-
-        DBOpenHelper helper = OpenMRSDBOpenHelper.getInstance().getDBOpenHelper();
-        final Cursor cursor = helper.getReadableDatabase().query(PatientTable.TABLE_NAME, null, where, whereArgs, null, null, null);
-        if (null != cursor) {
-            try {
-                if (cursor.moveToFirst()) {
-                    patient = cursorToPatient(cursor);
-                }
-            } finally {
-                cursor.close();
-            }
-        }
-        return patient;
-    }
-
-    public List<Patient> getUnsyncedPatients(){
-        List<Patient> patientList = new LinkedList<>();
-        String where = String.format("%s = ?", PatientTable.Column.SYNCED);
-        String[] whereArgs = new String[]{"false"};
-
-        DBOpenHelper helper = OpenMRSDBOpenHelper.getInstance().getDBOpenHelper();
-        final Cursor cursor = helper.getReadableDatabase().query(PatientTable.TABLE_NAME, null , where, whereArgs, null, null, null);
-        if (null != cursor) {
-            try {
-                while (cursor.moveToNext()) {
-                    Patient patient = cursorToPatient(cursor);
-                    if(!patient.isSynced()){
-                        patientList.add(patient);
+            DBOpenHelper helper = OpenMRSDBOpenHelper.getInstance().getDBOpenHelper();
+            final Cursor cursor = helper.getReadableDatabase().query(PatientTable.TABLE_NAME, null, where, whereArgs, null, null, null);
+            String patientUUID = "";
+            if (null != cursor) {
+                try {
+                    if (cursor.moveToFirst()) {
+                        int uuidColumnIndex = cursor.getColumnIndex(PatientTable.Column.UUID);
+                        patientUUID = cursor.getString(uuidColumnIndex);
                     }
+                } finally {
+                    cursor.close();
                 }
-            } finally {
-                cursor.close();
             }
-        }
-        return patientList;
+            return uuid.equalsIgnoreCase(patientUUID);
+        });
     }
 
-    public Patient findPatientByID(String id) {
-        Patient patient = new Patient();
-        String where = String.format("%s = ?", PatientTable.Column.ID);
-        String[] whereArgs = new String[]{id};
+        public Observable<Patient> findPatientByUUID(String uuid) {
+        return createObservableIO(() -> {
+            String where = String.format("%s = ?", PatientTable.Column.UUID);
+            String[] whereArgs = new String[]{uuid};
 
-        DBOpenHelper helper = OpenMRSDBOpenHelper.getInstance().getDBOpenHelper();
-        final Cursor cursor = helper.getReadableDatabase().query(PatientTable.TABLE_NAME, null, where, whereArgs, null, null, null);
-        if (null != cursor) {
-            try {
-                if (cursor.moveToFirst()) {
-                    patient = cursorToPatient(cursor);
+            DBOpenHelper helper = OpenMRSDBOpenHelper.getInstance().getDBOpenHelper();
+            final Cursor cursor = helper.getReadableDatabase().query(PatientTable.TABLE_NAME, null, where, whereArgs, null, null, null);
+            if (null != cursor) {
+                try {
+                    if (cursor.moveToFirst()) {
+                        return cursorToPatient(cursor);
+                    }
+                } finally {
+                    cursor.close();
                 }
-            } finally {
-                cursor.close();
             }
-        }
-        return patient;
+            return null;
+        });
+    }
+
+    public Observable<List<Patient>> getUnsyncedPatients(){
+        return createObservableIO(() -> {
+            List<Patient> patientList = new LinkedList<>();
+            String where = String.format("%s = ?", PatientTable.Column.SYNCED);
+            String[] whereArgs = new String[]{"false"};
+
+            DBOpenHelper helper = OpenMRSDBOpenHelper.getInstance().getDBOpenHelper();
+            final Cursor cursor = helper.getReadableDatabase().query(PatientTable.TABLE_NAME, null , where, whereArgs, null, null, null);
+            if (null != cursor) {
+                try {
+                    while (cursor.moveToNext()) {
+                        Patient patient = cursorToPatient(cursor);
+                        if(!patient.isSynced()){
+                            patientList.add(patient);
+                        }
+                    }
+                } finally {
+                    cursor.close();
+                }
+            }
+            return patientList;
+        });
+    }
+
+    public Observable<Patient> findPatientByID(String id) {
+        return createObservableIO(() -> {
+            Patient patient = new Patient();
+            String where = String.format("%s = ?", PatientTable.Column.ID);
+            String[] whereArgs = new String[]{id};
+
+            DBOpenHelper helper = OpenMRSDBOpenHelper.getInstance().getDBOpenHelper();
+            final Cursor cursor = helper.getReadableDatabase().query(PatientTable.TABLE_NAME, null, where, whereArgs, null, null, null);
+            if (null != cursor) {
+                try {
+                    if (cursor.moveToFirst()) {
+                        patient = cursorToPatient(cursor);
+                    }
+                } finally {
+                    cursor.close();
+                }
+            }
+            return patient;
+        });
     }
 
     private PersonAddress cursorToAddress(Cursor cursor) {

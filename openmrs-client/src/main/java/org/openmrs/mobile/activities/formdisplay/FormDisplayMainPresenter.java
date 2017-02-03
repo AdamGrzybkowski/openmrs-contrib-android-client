@@ -29,6 +29,8 @@ import org.openmrs.mobile.utilities.ToastUtil;
 import java.util.ArrayList;
 import java.util.List;
 
+import rx.android.schedulers.AndroidSchedulers;
+
 import static org.openmrs.mobile.utilities.FormService.getFormResourceByName;
 
 public class FormDisplayMainPresenter implements FormDisplayContract.Presenter.MainPresenter {
@@ -39,20 +41,25 @@ public class FormDisplayMainPresenter implements FormDisplayContract.Presenter.M
     private FormDisplayContract.View.MainView mFormDisplayView;
     private Patient mPatient;
     private FormPageAdapter mPageAdapter;
+    private PatientDAO patientDAO;
 
     public FormDisplayMainPresenter(FormDisplayContract.View.MainView mFormDisplayView, Bundle bundle, FormPageAdapter mPageAdapter) {
         this.mFormDisplayView = mFormDisplayView;
         this.mPatientID =(long) bundle.get(ApplicationConstants.BundleKeys.PATIENT_ID_BUNDLE);
-        this.mPatient =new PatientDAO().findPatientByID(Long.toString(mPatientID));
         this.mEncountertype =(String)bundle.get(ApplicationConstants.BundleKeys.ENCOUNTERTYPE);
         this.mFormname = (String) bundle.get(ApplicationConstants.BundleKeys.FORM_NAME);
         this.mPageAdapter = mPageAdapter;
+        this.patientDAO = new PatientDAO();
         mFormDisplayView.setPresenter(this);
     }
 
     @Override
     public void start() {
-        // This method is intentionally empty
+        patientDAO.findPatientByID(Long.toString(mPatientID))
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(patient -> {
+                    this.mPatient = patient;
+                });
     }
 
     @Override
@@ -115,7 +122,7 @@ public class FormDisplayMainPresenter implements FormDisplayContract.Presenter.M
 
             if(!mPatient.isSynced()) {
                 mPatient.addEncounters(encountercreate.getId());
-                new PatientDAO().updatePatient(mPatient.getId(),mPatient);
+                new PatientDAO().updatePatient(mPatient.getId(),mPatient).subscribe();
                 ToastUtil.error("Patient not yet registered. Form data is saved locally " +
                         "and will sync when internet connection is restored. ");
                 mFormDisplayView.enableSubmitButton(true);

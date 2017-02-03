@@ -26,16 +26,21 @@ import org.openmrs.mobile.utilities.ApplicationConstants;
 import java.util.ArrayList;
 import java.util.List;
 
+import rx.android.schedulers.AndroidSchedulers;
+
 public class PatientDashboardDiagnosisPresenter extends PatientDashboardMainPresenterImpl implements PatientDashboardContract.PatientDiagnosisPresenter {
 
     private PatientDashboardContract.ViewPatientDiagnosis mPatientDiagnosisView;
+    private PatientDAO patientDAO;
+    private String patientId;
 
 
     public PatientDashboardDiagnosisPresenter(String id,
                                             PatientDashboardContract.ViewPatientDiagnosis patientDiagnosisView) {
-        this.mPatient = new PatientDAO().findPatientByID(id);
+        this.patientId = id;
         this.mPatientDiagnosisView = patientDiagnosisView;
         this.mPatientDiagnosisView.setPresenter(this);
+        this.patientDAO = new PatientDAO();
     }
 
     private List<String> getAllDiagnosis(List<Encounter> encounters) {
@@ -55,12 +60,17 @@ public class PatientDashboardDiagnosisPresenter extends PatientDashboardMainPres
 
     @Override
     public void start() {
-        loadDiagnosis();
+        patientDAO.findPatientByID(patientId)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(patient -> {
+                    mPatient = patient;
+                    loadDiagnosis();
+                });
     }
 
     @Override
     public void loadDiagnosis() {
-        List<Encounter> mVisitNoteEncounters = new EncounterDAO().getAllEncountersByType(mPatient.getId(),
+        List<Encounter> mVisitNoteEncounters = new EncounterDAO().getAllEncountersByType(Long.valueOf(patientId),
                 new EncounterType(EncounterType.VISIT_NOTE));
         mPatientDiagnosisView.setDiagnosesToDisplay(getAllDiagnosis(mVisitNoteEncounters));
     }

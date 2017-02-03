@@ -108,7 +108,7 @@ public class PatientApi extends RetrofitApi {
                                         if (patient.getPerson().getPhoto() != null)
                                             uploadPatientPhoto(patient);
 
-                                        new PatientDAO().updatePatient(patient.getId(), patient);
+                                        new PatientDAO().updatePatient(patient.getId(), patient).subscribe();
                                         if(!patient.getEncounters().equals(""))
                                             addEncounters(patient);
 
@@ -208,7 +208,7 @@ public class PatientApi extends RetrofitApi {
                         if (patient.getPerson().getPhoto() != null)
                             uploadPatientPhoto(patient);
 
-                        new PatientDAO().updatePatient(patient.getId(), patient);
+                        new PatientDAO().updatePatient(patient.getId(), patient).subscribe();
 
                         ToastUtil.success("Patient " + patient.getPerson().getName().getNameString()
                                 + " updated");

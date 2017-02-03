@@ -52,7 +52,7 @@ public class VisitDAO {
     private long saveVisit(Visit visit, long patientID) {
         EncounterDAO encounterDAO = new EncounterDAO();
         ObservationDAO observationDAO = new ObservationDAO();
-        visit.setPatient(new PatientDAO().findPatientByID(String.valueOf(patientID)));
+        visit.setPatient(new PatientDAO().findPatientByID(String.valueOf(patientID)).toBlocking().first());
         long visitID = new VisitTable().insert(visit);
         if (visit.getEncounters() != null) {
             for (Encounter encounter : visit.getEncounters()) {
@@ -68,7 +68,7 @@ public class VisitDAO {
     private boolean updateVisit(Visit visit, long visitID, long patientID) {
         EncounterDAO encounterDAO = new EncounterDAO();
         ObservationDAO observationDAO = new ObservationDAO();
-        visit.setPatient(new PatientDAO().findPatientByID(String.valueOf(patientID)));
+        visit.setPatient(new PatientDAO().findPatientByID(String.valueOf(patientID)).toBlocking().first());
         if (visit.getEncounters() != null) {
             for (Encounter encounter : visit.getEncounters()) {
                 long encounterID = encounterDAO.getEncounterByUUID(encounter.getUuid());
@@ -119,7 +119,7 @@ public class VisitDAO {
                         visit.setStartDatetime(cursor.getString(visitStart_CI));
                         visit.setStopDatetime(cursor.getString(visitStop_CI));
                         visit.setEncounters(new EncounterDAO().findEncountersByVisitID(visit.getId()));
-                        visit.setPatient(new PatientDAO().findPatientByID(String.valueOf(cursor.getLong(visitPatientID_CI))));
+                        visit.setPatient(new PatientDAO().findPatientByID(String.valueOf(cursor.getLong(visitPatientID_CI))).toBlocking().first());
                         visits.add(visit);
                     }
                 } finally {
@@ -158,7 +158,7 @@ public class VisitDAO {
                         visit.setStartDatetime(cursor.getString(visitStart_CI));
                         visit.setStopDatetime(cursor.getString(visitStop_CI));
                         visit.setEncounters(new EncounterDAO().findEncountersByVisitID(visit.getId()));
-                        visit.setPatient(new PatientDAO().findPatientByID(String.valueOf(cursor.getLong(visitPatientID_CI))));
+                        visit.setPatient(new PatientDAO().findPatientByID(String.valueOf(cursor.getLong(visitPatientID_CI))).toBlocking().first());
                         visits.add(visit);
                     }
                 } finally {
@@ -199,7 +199,7 @@ public class VisitDAO {
                         visit.setStartDatetime(cursor.getString(visitStart_CI));
                         visit.setStopDatetime(cursor.getString(visitStop_CI));
                         visit.setEncounters(new EncounterDAO().findEncountersByVisitID(visit.getId()));
-                        visit.setPatient(new PatientDAO().findPatientByID(String.valueOf(cursor.getLong(visitPatientID_CI))));
+                        visit.setPatient(new PatientDAO().findPatientByID(String.valueOf(cursor.getLong(visitPatientID_CI))).toBlocking().first());
                     }
                 } finally {
                     cursor.close();
@@ -237,7 +237,7 @@ public class VisitDAO {
                         visit.setStartDatetime(cursor.getString(visitStart_CI));
                         visit.setStopDatetime(cursor.getString(visitStop_CI));
                         visit.setEncounters(new EncounterDAO().findEncountersByVisitID(visitID));
-                        visit.setPatient(new PatientDAO().findPatientByID(String.valueOf(cursor.getLong(visitPatientID_CI))));
+                        visit.setPatient(new PatientDAO().findPatientByID(String.valueOf(cursor.getLong(visitPatientID_CI))).toBlocking().first());
                     }
                 } finally {
                     cursor.close();
@@ -297,7 +297,7 @@ public class VisitDAO {
                         visit.setStartDatetime(cursor.getString(visitStart_CI));
                         visit.setStopDatetime(cursor.getString(visitStop_CI));
                         visit.setEncounters(new EncounterDAO().findEncountersByVisitID(visit.getId()));
-                        visit.setPatient(new PatientDAO().findPatientByID(String.valueOf(cursor.getLong(visitPatientID_CI))));
+                        visit.setPatient(new PatientDAO().findPatientByID(String.valueOf(cursor.getLong(visitPatientID_CI))).toBlocking().first());
                     }
                 } finally {
                     cursor.close();

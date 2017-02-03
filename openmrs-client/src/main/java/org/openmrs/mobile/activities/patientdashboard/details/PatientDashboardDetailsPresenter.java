@@ -25,15 +25,20 @@ import org.openmrs.mobile.listeners.retrofit.DownloadPatientCallbackListener;
 import org.openmrs.mobile.models.Patient;
 import org.openmrs.mobile.utilities.NetworkUtils;
 
+import rx.android.schedulers.AndroidSchedulers;
+
 public class PatientDashboardDetailsPresenter extends PatientDashboardMainPresenterImpl implements PatientDashboardContract.PatientDetailsPresenter {
 
     private PatientDashboardContract.ViewPatientDetails mPatientDetailsView;
+    private PatientDAO patientDAO;
+    private String patientId;
 
     public PatientDashboardDetailsPresenter(String id,
                                             PatientDashboardContract.ViewPatientDetails mPatientDetailsView) {
-        this.mPatient = new PatientDAO().findPatientByID(id);
+        this.patientId = id;
         this.mPatientDetailsView = mPatientDetailsView;
         this.mPatientDetailsView.setPresenter(this);
+        this.patientDAO = new PatientDAO();
     }
 
     @Override
@@ -51,12 +56,17 @@ public class PatientDashboardDetailsPresenter extends PatientDashboardMainPresen
       }
 
     private void updatePatientData(final Patient patient) {
-        if (new PatientDAO().updatePatient(mPatient.getId(), patient)) {
-            mPatient = new PatientDAO().findPatientByUUID(patient.getUuid());
-            reloadPatientData(mPatient);
-        } else {
-            mPatientDetailsView.showToast(R.string.get_patient_from_database_error, true);
-        }
+        patientDAO.updatePatient(Long.valueOf(patientId), patient)
+        .observeOn(AndroidSchedulers.mainThread())
+        .subscribe(updated -> {
+            if (updated) {
+                mPatient = new PatientDAO().findPatientByUUID(patient.getUuid()).toBlocking().first();
+                reloadPatientData(mPatient);
+            }
+            else {
+                mPatientDetailsView.showToast(R.string.get_patient_from_database_error, true);
+            }
+        });
     }
 
     @Override
@@ -66,12 +76,16 @@ public class PatientDashboardDetailsPresenter extends PatientDashboardMainPresen
 
     @Override
     public void start() {
-        mPatient = new PatientDAO().findPatientByID(mPatient.getId().toString());
-        mPatientDetailsView.setMenuTitle(mPatient.getPerson().getName().getNameString(), mPatient.getIdentifier().getIdentifier());
-        mPatientDetailsView.resolvePatientDataDisplay(new PatientDAO().findPatientByID(mPatient.getId().toString()));
-        if (!NetworkUtils.isOnline()) {
-            mPatientDetailsView.attachSnackbarToActivity();
-        }
+        patientDAO.findPatientByID(patientId)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(patient -> {
+                    mPatient = patient;
+                    mPatientDetailsView.setMenuTitle(mPatient.getPerson().getName().getNameString(), mPatient.getIdentifier().getIdentifier());
+                    mPatientDetailsView.resolvePatientDataDisplay(patient);
+                    if (!NetworkUtils.isOnline()) {
+                        mPatientDetailsView.attachSnackbarToActivity();
+                    }
+                });
     }
 
     /*
