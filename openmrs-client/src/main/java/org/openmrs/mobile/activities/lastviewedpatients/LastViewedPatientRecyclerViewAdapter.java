@@ -315,7 +315,7 @@ class LastViewedPatientRecyclerViewAdapter extends RecyclerView.Adapter<LastView
 
             @Override
             public void onPatientPhotoDownloaded(Patient patient) {
-                new PatientDAO().updatePatient(patient.getId(), patient);
+                new PatientDAO().updatePatient(patient.getId(), patient).subscribe();
             }
 
             @Override

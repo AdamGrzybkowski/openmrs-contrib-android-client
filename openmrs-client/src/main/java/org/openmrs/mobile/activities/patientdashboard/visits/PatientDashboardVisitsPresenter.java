@@ -28,29 +28,37 @@ import rx.android.schedulers.AndroidSchedulers;
 
 public class PatientDashboardVisitsPresenter extends PatientDashboardMainPresenterImpl implements PatientDashboardContract.PatientVisitsPresenter {
 
+    private final String patientId;
     private PatientDashboardContract.ViewPatientVisits mPatientVisitsView;
     private VisitDAO visitDAO;
+    private PatientDAO patientDAO;
 
-    public PatientDashboardVisitsPresenter(String id, PatientDashboardContract.ViewPatientVisits mPatientVisitsView) {
-        this.mPatient = new PatientDAO().findPatientByID(id);
+    public PatientDashboardVisitsPresenter(String patientId, PatientDashboardContract.ViewPatientVisits mPatientVisitsView) {
+        this.patientId = patientId;
         this.mPatientVisitsView = mPatientVisitsView;
         this.mPatientVisitsView.setPresenter(this);
         this.visitDAO = new VisitDAO();
+        this.patientDAO = new PatientDAO();
     }
 
     @Override
     public void start() {
-        visitDAO.getVisitsByPatientID(mPatient.getId())
+        patientDAO.findPatientByID(patientId)
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(patientVisits -> {
-                    if (patientVisits !=null && patientVisits.isEmpty()) {
-                        mPatientVisitsView.toggleRecyclerListVisibility(false);
-                    }
-                    else {
-                        mPatientVisitsView.toggleRecyclerListVisibility(true);
-                        mPatientVisitsView.setVisitsToDisplay(patientVisits);
-                    }
-                });
+                .subscribe(patient -> {
+            this.mPatient = patient;
+            visitDAO.getVisitsByPatientID(mPatient.getId())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(patientVisits -> {
+                        if (patientVisits !=null && patientVisits.isEmpty()) {
+                            mPatientVisitsView.toggleRecyclerListVisibility(false);
+                        }
+                        else {
+                            mPatientVisitsView.toggleRecyclerListVisibility(true);
+                            mPatientVisitsView.setVisitsToDisplay(patientVisits);
+                        }
+                    });
+        });
     }
 
     @Override
@@ -76,7 +84,6 @@ public class PatientDashboardVisitsPresenter extends PatientDashboardMainPresent
         new VisitApi().syncVisitsData(mPatient, new DefaultResponseCallbackListener() {
             @Override
             public void onResponse() {
-                VisitDAO visitDAO = new VisitDAO();
                 visitDAO.getVisitsByPatientID(mPatient.getId())
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(visList -> {

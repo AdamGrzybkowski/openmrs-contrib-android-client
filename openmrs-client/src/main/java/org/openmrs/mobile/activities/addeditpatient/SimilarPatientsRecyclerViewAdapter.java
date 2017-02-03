@@ -39,16 +39,20 @@ import org.openmrs.mobile.utilities.ToastUtil;
 
 import java.util.List;
 
+import rx.android.schedulers.AndroidSchedulers;
+
 public class SimilarPatientsRecyclerViewAdapter extends RecyclerView.Adapter<SimilarPatientsRecyclerViewAdapter.PatientViewHolder>{
 
     private List<Patient> patientList;
     private Patient newPatient;
     private Activity mContext;
+    private PatientDAO patientDao;
 
     public SimilarPatientsRecyclerViewAdapter(Activity mContext, List<Patient> patientList, Patient patient) {
         this.newPatient = patient;
         this.patientList = patientList;
         this.mContext = mContext;
+        this.patientDao = new PatientDAO();
     }
 
     @Override
@@ -70,19 +74,25 @@ public class SimilarPatientsRecyclerViewAdapter extends RecyclerView.Adapter<Sim
         holder.mRowLayout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!(new PatientDAO().isUserAlreadySaved(patient.getUuid()))) {
-                    downloadPatient(patient);
-                }
-                Intent intent = new Intent(mContext, PatientDashboardActivity.class);
-                intent.putExtra(ApplicationConstants.BundleKeys.PATIENT_ID_BUNDLE, getPatientId(patient));
-                mContext.startActivity(intent);
-                mContext.finish();
+
+                patientDao.isUserAlreadySaved(patient.getUuid())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribe(isSaved -> {
+                            if (!isSaved) {
+                                downloadPatient(patient);
+                            }
+                            Intent intent = new Intent(mContext, PatientDashboardActivity.class);
+                            intent.putExtra(ApplicationConstants.BundleKeys.PATIENT_ID_BUNDLE, getPatientId(patient));
+                            mContext.startActivity(intent);
+                            mContext.finish();
+
+                        });
             }
         });
     }
 
     private String getPatientId(Patient patient) {
-        return new PatientDAO().findPatientByUUID(patient.getUuid()).getId().toString();
+        return new PatientDAO().findPatientByUUID(patient.getUuid()).toBlocking().first().getId().toString();
     }
 
     @Override

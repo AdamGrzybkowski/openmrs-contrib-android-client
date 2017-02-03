@@ -124,13 +124,18 @@ public class AddEditPatientFragment extends Fragment implements AddEditPatientCo
         resolveViews(root);
         addSuggestionsToAutoCompleTextView();
         addListeners();
-        fillFields(mPresenter.getPatientToUpdate());
         return root;
     }
 
     @Override
     public void setPresenter(AddEditPatientContract.Presenter presenter) {
         this.mPresenter = presenter;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        mPresenter.start();
     }
 
     @Override
@@ -347,7 +352,8 @@ public class AddEditPatientFragment extends Fragment implements AddEditPatientCo
         patientImageView = (ImageView) v.findViewById(R.id.patientPhoto);
     }
 
-    private void fillFields(final Patient patient) {
+    @Override
+    public void fillFields(final Patient patient) {
         if(patient != null && patient.getPerson() != null) {
             //Change to Update Patient Form
             this.getActivity().setTitle("Update Patient");

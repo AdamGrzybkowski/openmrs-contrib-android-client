@@ -26,7 +26,6 @@ import android.widget.TextView;
 import org.openmrs.mobile.R;
 import org.openmrs.mobile.activities.visitdashboard.VisitDashboardActivity;
 import org.openmrs.mobile.dao.PatientDAO;
-import org.openmrs.mobile.models.Patient;
 import org.openmrs.mobile.models.Visit;
 import org.openmrs.mobile.utilities.ApplicationConstants;
 import org.openmrs.mobile.utilities.DateUtils;
@@ -34,13 +33,17 @@ import org.openmrs.mobile.utilities.FontsUtil;
 
 import java.util.List;
 
+import rx.android.schedulers.AndroidSchedulers;
+
 public class ActiveVisitsRecyclerViewAdapter extends RecyclerView.Adapter<ActiveVisitsRecyclerViewAdapter.VisitViewHolder> {
     private Context mContext;
     private List<Visit> mVisits;
+    private PatientDAO patientDAO;
 
     public ActiveVisitsRecyclerViewAdapter(Context context, List<Visit> items) {
         this.mContext = context;
         this.mVisits = items;
+        this.patientDAO = new PatientDAO();
     }
 
     @Override
@@ -54,36 +57,36 @@ public class ActiveVisitsRecyclerViewAdapter extends RecyclerView.Adapter<Active
     public void onBindViewHolder(VisitViewHolder visitViewHolder, final int position) {
         final int adapterPos = visitViewHolder.getAdapterPosition();
         Visit visit = mVisits.get(adapterPos);
-        Patient patient = new PatientDAO().findPatientByID(visit.getPatient().getId().toString());
 
-        visitViewHolder.mVisitPlace.setText(mContext.getString(R.string.visit_in, visit.getLocation().getDisplay()));
+        patientDAO.findPatientByID(visit.getPatient().getId().toString())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(patient -> {
+                    visitViewHolder.mVisitPlace.setText(mContext.getString(R.string.visit_in, visit.getLocation().getDisplay()));
 
-        if (null != visit.getPatient().getId()) {
-            final String display = "#" + patient.getIdentifier().getIdentifier();
-            visitViewHolder.mIdentifier.setText(display);
-        }
-        if (null != patient.getPerson().getName()) {
-            visitViewHolder.mDisplayName.setText(patient.getPerson().getName().getNameString());
-        }
-        if (null != patient.getPerson().getGender()) {
-            visitViewHolder.mGender.setText(patient.getPerson().getGender());
-        }
-        try{
-            visitViewHolder.mBirthDate.setText(DateUtils.convertTime(DateUtils.convertTime(patient.getPerson().getBirthdate())));
-        }
-        catch (Exception e)
-        {
-            visitViewHolder.mBirthDate.setText(" ");
-        }
+                    if (null != visit.getPatient().getId()) {
+                        final String display = "#" + patient.getIdentifier().getIdentifier();
+                        visitViewHolder.mIdentifier.setText(display);
+                    }
+                    if (null != patient.getPerson().getName()) {
+                        visitViewHolder.mDisplayName.setText(patient.getPerson().getName().getNameString());
+                    }
+                    if (null != patient.getPerson().getGender()) {
+                        visitViewHolder.mGender.setText(patient.getPerson().getGender());
+                    }
+                    try{
+                        visitViewHolder.mBirthDate.setText(DateUtils.convertTime(DateUtils.convertTime(patient.getPerson().getBirthdate())));
+                    }
+                    catch (Exception e)
+                    {
+                        visitViewHolder.mBirthDate.setText(" ");
+                    }
 
-        visitViewHolder.mRelativeLayout.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(mContext, VisitDashboardActivity.class);
-                intent.putExtra(ApplicationConstants.BundleKeys.VISIT_ID, mVisits.get(adapterPos).getId());
-                mContext.startActivity(intent);
-            }
-        });
+                    visitViewHolder.mRelativeLayout.setOnClickListener(v -> {
+                        Intent intent = new Intent(mContext, VisitDashboardActivity.class);
+                        intent.putExtra(ApplicationConstants.BundleKeys.VISIT_ID, mVisits.get(adapterPos).getId());
+                        mContext.startActivity(intent);
+                    });
+                });
     }
 
     @Override

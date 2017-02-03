@@ -46,11 +46,11 @@ public interface AddEditPatientContract {
         void startPatientDashbordActivity(Patient patient);
 
         void showUpgradeRegistrationModuleInfo();
+
+        void fillFields(Patient patient);
     }
 
     interface Presenter extends BasePresenter {
-
-        Patient getPatientToUpdate();
 
         boolean isRegisteringPatient();
 

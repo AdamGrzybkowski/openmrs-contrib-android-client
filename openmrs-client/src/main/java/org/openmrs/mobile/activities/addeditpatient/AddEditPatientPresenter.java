@@ -34,15 +34,17 @@ import java.util.List;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import rx.android.schedulers.AndroidSchedulers;
 
 public class AddEditPatientPresenter implements AddEditPatientContract.Presenter {
 
     private final AddEditPatientContract.View mPatientInfoView;
-
     private Patient mPatient;
+
     private String patientToUpdateId;
     private List<String> mCountries;
     private boolean registeringPatient = false;
+    private PatientDAO patientDao;
 
     public AddEditPatientPresenter(AddEditPatientContract.View mPatientInfoView,
                                    List<String> countries,
@@ -51,17 +53,14 @@ public class AddEditPatientPresenter implements AddEditPatientContract.Presenter
         this.mPatientInfoView.setPresenter(this);
         this.mCountries = countries;
         this.patientToUpdateId = patientToUpdateId;
+        this.patientDao = new PatientDAO();
     }
     
     @Override
     public void start(){
-        // This method is intentionally empty
-    }
-
-    @Override
-    public Patient getPatientToUpdate() {
-        Patient patientToUpdate = new PatientDAO().findPatientByID(patientToUpdateId);
-        return patientToUpdate;
+        patientDao.findPatientByID(patientToUpdateId)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(mPatientInfoView::fillFields);
     }
 
     @Override
@@ -207,12 +206,16 @@ public class AddEditPatientPresenter implements AddEditPatientContract.Presenter
                 }
             });
         } else {
-            List<Patient> similarPatient = new PatientComparator().findSimilarPatient(new PatientDAO().getAllPatients(), patient);
-            if(!similarPatient.isEmpty()){
-                mPatientInfoView.showSimilarPatientDialog(similarPatient, patient);
-            } else {
-                registerPatient();
-            }
+            patientDao.getAllPatients()
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(patientList -> {
+                        List<Patient> similarPatient = new PatientComparator().findSimilarPatient(patientList, patient);
+                        if(!similarPatient.isEmpty()){
+                            mPatientInfoView.showSimilarPatientDialog(similarPatient, patient);
+                        } else {
+                            registerPatient();
+                        }
+                    });
         }
     }
 
